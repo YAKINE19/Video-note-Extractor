@@ -7,6 +7,7 @@ import requests
 import streamlit as st
 
 # ── API base URL ──────────────────────────────────────────────────────────────
+# hi
 # Priority: st.secrets > environment variable > localhost default
 def _get_api_base() -> str:
     try:
