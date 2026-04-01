@@ -1,8 +1,9 @@
 """Audio extraction from YouTube URLs and local video files."""
 import os
+import base64
 import subprocess
+import tempfile
 import logging
-from pathlib import Path
 
 import yt_dlp
 
@@ -15,37 +16,85 @@ def _audio_output_path(session_id: str) -> str:
     return os.path.join(settings.audio_dir, f"{session_id}.wav")
 
 
+def _cookies_file() -> str | None:
+    """Return a path to a Netscape-format cookies file, or None.
+
+    Checks two env vars (in order):
+      YOUTUBE_COOKIES_FILE  — path to an existing cookies.txt on disk
+      YOUTUBE_COOKIES_B64   — cookies.txt content encoded as base64
+                              (useful for injecting secrets into Render/Railway)
+    """
+    path = os.environ.get("YOUTUBE_COOKIES_FILE", "").strip()
+    if path and os.path.exists(path):
+        return path
+
+    b64 = os.environ.get("YOUTUBE_COOKIES_B64", "").strip()
+    if b64:
+        try:
+            content = base64.b64decode(b64).decode("utf-8")
+            # Write to a temp file that lives for the duration of the process
+            tmp = tempfile.NamedTemporaryFile(
+                mode="w", suffix=".txt", prefix="yt_cookies_", delete=False
+            )
+            tmp.write(content)
+            tmp.close()
+            logger.info("Using cookies from YOUTUBE_COOKIES_B64")
+            return tmp.name
+        except Exception as exc:
+            logger.warning("Failed to decode YOUTUBE_COOKIES_B64: %s", exc)
+
+    return None
+
+
 def extract_from_youtube(url: str, session_id: str) -> tuple[str, str]:
     """Download audio from a YouTube URL and convert to WAV.
 
     Returns (wav_path, title).
+
+    Bot-detection bypass strategy (applied in order):
+      1. iOS player client  — YouTube rarely challenges the iOS app signature
+      2. Android client     — fallback if iOS is also blocked
+      3. Cookies            — if YOUTUBE_COOKIES_FILE or YOUTUBE_COOKIES_B64 is set,
+                              those are passed to every attempt and usually resolve
+                              "Sign in to confirm you're not a bot" errors
     """
     output_path = _audio_output_path(session_id)
     outtmpl = os.path.join(settings.audio_dir, f"{session_id}.%(ext)s")
 
     ydl_opts = {
-        # Prefer an audio-only stream to minimise bytes transferred.
-        # Falls back to best available if no audio-only stream exists.
         "format": "bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio/best",
         "outtmpl": outtmpl,
         "postprocessors": [
             {
                 "key": "FFmpegExtractAudio",
                 "preferredcodec": "wav",
-                "preferredquality": "0",   # lossless for Whisper
+                "preferredquality": "0",
             }
         ],
-        # ── Network resilience ────────────────────────────────────────────
-        "retries": 10,             # retry failed fragment/segment downloads
-        "fragment_retries": 10,    # retry individual DASH/HLS fragments
-        "retry_sleep_functions": {"http": lambda n: 2 ** n},  # exponential back-off
-        "socket_timeout": 30,      # seconds per socket operation
-        "http_chunk_size": 1048576,  # 1 MB chunks — reduces per-read stall risk
-        # ── Misc ──────────────────────────────────────────────────────────
+        # ── Bot-detection bypass ───────────────────────────────────────────
+        # Use the iOS player client — its request signature is not flagged
+        # by YouTube's bot-detection on cloud IPs (unlike the default web client).
+        "extractor_args": {
+            "youtube": {
+                "player_client": ["ios", "android"],
+            }
+        },
+        # ── Network resilience ─────────────────────────────────────────────
+        "retries": 10,
+        "fragment_retries": 10,
+        "retry_sleep_functions": {"http": lambda n: min(2 ** n, 30)},
+        "socket_timeout": 30,
+        "http_chunk_size": 1048576,
+        # ── Misc ───────────────────────────────────────────────────────────
         "quiet": True,
         "no_warnings": True,
         "noprogress": True,
     }
+
+    # Attach cookies if the operator has provided them
+    cookies = _cookies_file()
+    if cookies:
+        ydl_opts["cookiefile"] = cookies
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
