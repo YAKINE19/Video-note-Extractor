@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-syntax:
+    name: Syntax check & lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install cloud deps (no torch — fast CI)
+        working-directory: backend
+        run: pip install -r requirements-cloud.txt
+
+      - name: Check Python syntax (all backend files)
+        run: |
+          python -c "
+          import ast, os, sys
+          errors = []
+          for root, dirs, files in os.walk('backend'):
+              dirs[:] = [d for d in dirs if d not in ('__pycache__', 'venv', '.venv')]
+              for f in files:
+                  if f.endswith('.py'):
+                      path = os.path.join(root, f)
+                      try:
+                          ast.parse(open(path).read())
+                      except SyntaxError as e:
+                          errors.append(f'{path}: {e}')
+          if errors:
+              [print(e) for e in errors]
+              sys.exit(1)
+          print(f'All backend Python files OK')
+          "
+
+      - name: Check frontend syntax
+        run: python -c "import ast; ast.parse(open('frontend/app.py').read()); print('frontend OK')"
+
+  test-backend-startup:
+    name: Backend import test
+    runs-on: ubuntu-latest
+    env:
+      GROQ_API_KEY: "gsk_test_key_for_ci_only"   # triggers cloud mode, no real calls made
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install cloud deps
+        working-directory: backend
+        run: pip install -r requirements-cloud.txt
+
+      - name: Test all modules import cleanly
+        working-directory: backend
+        run: |
+          python -c "
+          import config
+          import session_store
+          from models import schemas
+          from services import summarizer, transcriber, rag_service, audio_extractor, exporter
+          from api.routes import video, notes, chat, export
+          import main
+          print('All modules imported successfully')
+          print('Mode:', config.settings.mode)
+          "

@@ -1,0 +1,55 @@
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# ── Virtual environments ──────────────────────────────────────────────────────
+venv/
+.venv/
+env/
+frontend/venv/
+backend/venv/
+
+# ── Secrets — NEVER commit ────────────────────────────────────────────────────
+.env
+frontend/.streamlit/secrets.toml
+
+# ── User data / large generated files ────────────────────────────────────────
+data/uploads/
+data/audio/
+data/chroma/
+*.wav
+*.mp3
+*.mp4
+*.mkv
+*.avi
+*.mov
+*.webm
+*.m4a
+*.m4v
+
+# ── AI model weights (downloaded at runtime) ─────────────────────────────────
+*.pt
+*.bin
+*.safetensors
+*.gguf
+~/.cache/whisper/
+~/.ollama/
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── IDEs ──────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── Build ─────────────────────────────────────────────────────────────────────
+dist/
+build/
+*.egg-info/

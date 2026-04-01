@@ -1,0 +1,51 @@
+# ── Render deployment configuration ──────────────────────────────────────────
+# Docs: https://render.com/docs/blueprint-spec
+#
+# This deploys the FastAPI backend to Render's free tier.
+# The Streamlit frontend is deployed separately on Streamlit Community Cloud.
+#
+# Setup:
+#   1. Push this repo to GitHub
+#   2. Go to https://dashboard.render.com → New → Blueprint
+#   3. Connect your repo — Render reads this file automatically
+#   4. Set GROQ_API_KEY in the Render dashboard (Environment tab)
+
+services:
+  - type: web
+    name: video-note-extractor-api
+    runtime: python
+    region: oregon          # closest free region to most users
+    plan: free              # 512 MB RAM, shared CPU, sleeps after 15 min inactivity
+
+    rootDir: backend
+
+    # Install ffmpeg (system package) then Python deps (cloud-only, no torch)
+    buildCommand: |
+      apt-get update -qq && apt-get install -y -qq ffmpeg &&
+      pip install --upgrade pip &&
+      pip install -r requirements-cloud.txt
+
+    # Render injects $PORT automatically
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+
+    # Health check so Render knows when the app is ready
+    healthCheckPath: /health
+
+    envVars:
+      # ── Required: set this in Render dashboard ──────────────────────────────
+      - key: GROQ_API_KEY
+        sync: false          # filled in manually in the Render UI
+
+      # ── Optional overrides ───────────────────────────────────────────────────
+      - key: GROQ_MODEL
+        value: llama-3.1-8b-instant
+      - key: GROQ_WHISPER_MODEL
+        value: whisper-large-v3-turbo
+
+      # ── Storage (ephemeral on free tier — resets on redeploy) ────────────────
+      - key: UPLOAD_DIR
+        value: /tmp/uploads
+      - key: AUDIO_DIR
+        value: /tmp/audio
+      - key: CHROMA_PERSIST_DIR
+        value: /tmp/chroma

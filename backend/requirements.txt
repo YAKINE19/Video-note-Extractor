@@ -1,0 +1,37 @@
+# ── Local development requirements ────────────────────────────────────────────
+# Includes torch-heavy local AI models (Whisper + sentence-transformers).
+# Use requirements-cloud.txt for Render / free-tier cloud deployment.
+#
+# System prerequisites:
+#   macOS:  brew install ffmpeg ollama
+#   Linux:  sudo apt install ffmpeg && curl -fsSL https://ollama.com/install.sh | sh
+
+# Web framework
+fastapi>=0.111.0
+uvicorn[standard]>=0.29.0
+python-multipart>=0.0.9
+pydantic-settings>=2.2.0
+
+# Audio extraction
+yt-dlp>=2024.4.9
+
+# Local STT (downloads model weights on first use)
+# Model sizes: tiny/base ~150 MB | small ~500 MB | medium ~1.5 GB | large-v3 ~3 GB
+openai-whisper>=20231117   # installs torch automatically
+
+# Local LLM via Ollama
+ollama>=0.2.0
+
+# Vector DB + local embeddings
+chromadb>=0.5.0
+sentence-transformers>=3.0.0
+
+# Groq (optional — set GROQ_API_KEY to enable cloud mode)
+groq>=0.9.0
+
+# PDF export
+fpdf2>=2.7.9
+
+# Utilities
+httpx>=0.27.0
+python-dotenv>=1.0.1

@@ -1,0 +1,28 @@
+# ── Cloud deployment requirements (Render free tier) ──────────────────────────
+# NO torch, NO openai-whisper, NO sentence-transformers, NO ollama
+# Everything heavy is replaced by the free Groq API.
+# Fits comfortably in 512 MB RAM.
+#
+# Usage:
+#   pip install -r requirements-cloud.txt
+#
+# Required env vars:
+#   GROQ_API_KEY=gsk_...   (free at https://console.groq.com)
+
+fastapi>=0.111.0
+uvicorn[standard]>=0.29.0
+python-multipart>=0.0.9
+pydantic-settings>=2.2.0
+
+# Audio extraction (system ffmpeg required — installed by Render build command)
+yt-dlp>=2024.4.9
+
+# Free LLM + Whisper API (Llama 3, Mistral, Whisper — all open-source models)
+groq>=0.9.0
+
+# PDF export
+fpdf2>=2.7.9
+
+# HTTP + utils
+httpx>=0.27.0
+python-dotenv>=1.0.1
