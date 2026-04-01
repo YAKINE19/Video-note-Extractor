@@ -8,7 +8,7 @@ A tool that converts long videos — YouTube content, lectures, or meetings — 
 
 Fully free. No paid APIs required.
 
-**Live demo:** [your-app.onrender.com](https://your-app.onrender.com) · [Frontend on Streamlit Cloud](https://your-app.streamlit.app)
+**Live demo:** https://video-note-extractor-37yibkyzsfcwsuvtji6gw4.streamlit.app/
 
 ---
 
